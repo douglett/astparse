@@ -1,11 +1,21 @@
 #include "core/core.hpp"
+#include "core/astparserule.hpp"
 #include "tinybasic/tinybasicparser.hpp"
 #include "tinybasic/tinybasiccompiler.hpp"
 using namespace std;
 
 
+int test1() {
+	ASTParseRule parse;
+	parse.test();
+	return 0;
+}
+
+
 int main() {
 	printf("hello world\n");
+
+	return test1();
 
 	// TestlangParser parser;
 	// parser.init();
