@@ -23,26 +23,32 @@ struct ASTParseRule : TokenHelpers {
 		tok.tokenizeline(line);
 		tok.show();
 		// parse
-		pand(rule);
-		// por();
+		// pand(rule);
+		por(rule);
 	}
 
-	// int por() {
-	// 	pand();
-	// 	while (tok.peek() == "|") {
-	// 		tok.get();
-	// 		cout << "or" << endl;
-	// 		pand();
-	// 	}
-	// 	return -1;
-	// }
+	int por(Rule& rule) {
+		rule.subrules.push_back({ {}, true });
+		int id = rule.subrules.size() - 1;
+		// first rule
+		int andid = pand(rule);
+		rule.subrules.at(id).list.push_back({ "$"+to_string(andid) });
+		// second id's
+		while (tok.peek() == "|") {
+			tok.get();
+			// cout << "or" << endl;
+			int andid = pand(rule);
+			rule.subrules.at(id).list.push_back({ "$"+to_string(andid) });
+		}
+		return id;
+	}
 
 	int pand(Rule& rule) {
 		rule.subrules.push_back({ {}, false });
 		int id = rule.subrules.size() - 1;
 		while (!tok.eof()) {
-			// if (tok.peek() == "|")
-			// 	break;
+			if (tok.peek() == "|")
+				break;
 			auto atom = patom();
 			rule.subrules.at(id).list.push_back(atom);
 		}
@@ -85,7 +91,8 @@ struct ASTParseRule : TokenHelpers {
 
 	void test() {
 		addrule("test1", "PRINT   $hello  A 1+");
-		// addrule("test2", "$hello $world | PRINT $world | 1");
+		addrule("test2", "$hello $world | A");
+		addrule("test3", "$hello $world | PRINT $world | 1");
 		// addrule("test1", "PRINT ($strlit | (0|1|2)+)!");
 
 		showall();
@@ -100,9 +107,14 @@ struct ASTParseRule : TokenHelpers {
 		auto& rule = rules.at(rulename);
 		cout << rule.name << ":" << endl;
 		for (size_t i = 0; i < rule.subrules.size(); i++) {
-			cout << "   " /*<< (i < 10 ? "0" : "")*/ << i << ": ";
-			for (auto& atom : rule.subrules[i].list)
-				cout<< atom.rule << atom.mod << " ";
+			// cout << "   " << (i < 10 ? "0" : "") << i << ": ";
+			cout << "   " << i << ": ";
+			auto& subrule = rule.subrules[i];
+			for (auto& atom : subrule.list) {
+				cout << atom.rule << atom.mod << " ";
+				if (subrule.flagor && &atom != &subrule.list.back())
+					cout << "| ";
+			}
 			cout << endl;
 		}
 	}
