@@ -16,14 +16,17 @@ struct ASTParseRule : TokenHelpers {
 
 	void addrule(const string& name, const string& line) {
 		cout << "making rule: " << name << endl;
-		assert(rules.count(name) == 0);
+		// check name validity and init
+		if (!isvalidname(name))
+			error("addrule", "invalid rule name: " + name);
+		if (rules.count(name))
+			error("addrule", "redefinition of rule: " + name);
 		auto& rule = rules[name] = { name };
 		// init tokenizer
 		tok.reset();
 		tok.tokenizeline(line);
 		tok.show();
 		// parse
-		// pand(rule);
 		por(rule);
 	}
 
@@ -31,14 +34,13 @@ struct ASTParseRule : TokenHelpers {
 		rule.subrules.push_back({ {}, true });
 		int id = rule.subrules.size() - 1;
 		// first rule
-		int andid = pand(rule);
-		rule.subrules.at(id).list.push_back({ "$"+to_string(andid) });
-		// second id's
+		int id_and = pand(rule);
+		rule.subrules.at(id).list.push_back({ "$"+to_string(id_and) });
+		// second -> multiple rules
 		while (tok.peek() == "|") {
 			tok.get();
-			// cout << "or" << endl;
-			int andid = pand(rule);
-			rule.subrules.at(id).list.push_back({ "$"+to_string(andid) });
+			int id_and = pand(rule);
+			rule.subrules.at(id).list.push_back({ "$"+to_string(id_and) });
 		}
 		return id;
 	}
@@ -46,13 +48,16 @@ struct ASTParseRule : TokenHelpers {
 	int pand(Rule& rule) {
 		rule.subrules.push_back({ {}, false });
 		int id = rule.subrules.size() - 1;
+		// parse each Atom in rule
 		while (!tok.eof()) {
-			if (tok.peek() == "|" || tok.peek() == ")")
+			if (tok.peek() == "|" || tok.peek() == ")")  // break rule if we hit an 'or' or 'end-bracket' operator
 				break;
 			auto atom = patom(rule);
 			rule.subrules.at(id).list.push_back(atom);
 		}
-		assert(rule.subrules.at(id).list.size() >= 1);
+		// sanity check - should be at least one rule here
+		if (rule.subrules.at(id).list.size() == 0)
+			error("pand", "expected at least one rule");
 		return id;
 	}
 
@@ -61,12 +66,14 @@ struct ASTParseRule : TokenHelpers {
 		assert( !tok.eof() );
 		// assert( !ismodifier(tok.peek()) && !isoperator(tok.peek()) );
 		assert( !ismodifier(tok.peek()) && tok.peek() != "|" );
+		// $rulename
 		if (tok.peek() == "$") {
 			atom.rule = tok.get();
 			assert(isidentifier(tok.peek()));
 			atom.rule += tok.get();
 			atom.mod = pmodifiers();
 		}
+		// bracketed rules
 		else if (tok.peek() == "(") {
 			tok.get();
 			int id_or = por(rule);
@@ -91,19 +98,26 @@ struct ASTParseRule : TokenHelpers {
 		return mod;
 	}
 
-	int ismodifier(string s) {
+	// helpers - various definitions
+	static int ismodifier(const string& s) {
 		return s == "*" || s == "+" || s == "!";
+	}
+	static int isvalidname(const string& name) {
+		if (name.length() < 2 || name[0] != '$')  return false;
+		for (size_t i = 1; i < name.length(); i++)
+			if ( !isalphanum(name[i]) )  return false;
+		return true;
 	}
 	// int isoperator(string s) {
 	// 	return s == "(" || s == ")" || s == "|";
 	// }
 
 	void test() {
-		addrule("test1", "PRINT   $hello  A 1+");
-		addrule("test2", "$hello $world | A");
-		addrule("test3", "$hello $world | PRINT $world | 1");
-		addrule("test4", "a ($addop $subop) b");
-		addrule("test5", "PRINT ($strlit | (100|101|102)+)!");
+		addrule("$test1", "PRINT   $hello  A 1+");
+		addrule("$test2", "$hello $world | A");
+		addrule("$test3", "$hello $world | PRINT $world | 1");
+		addrule("$test4", "a ($addop $subop) b");
+		addrule("$test5", "PRINT ($strlit | (100|101|102)+)!");
 
 		showall();
 	}
@@ -132,7 +146,7 @@ struct ASTParseRule : TokenHelpers {
 	}
 
 	int error(const string& type, const string& msg) {
-		throw runtime_error(type + ": " + msg);
+		throw runtime_error("ASTRule: " + type + ": " + msg);
 		return false;
 	}
 };
