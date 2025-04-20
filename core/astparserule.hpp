@@ -63,7 +63,7 @@ struct ASTParseRule : TokenHelpers {
 	Atom patom(Rule& rule) {
 		Atom atom;
 		// error checking
-		if (tok.eof() || ismodifier(tok.peek()) || tok.peek() == "|") {
+		if (tok.eof() || ismodifier(tok.peek()) || tok.peek() == "|" || tok.peek() == ")") {
 			error("patom", "unexpected in atom: '" + tok.get() + "'");
 		}
 		// $rulename
@@ -97,7 +97,8 @@ struct ASTParseRule : TokenHelpers {
 		string mod;
 		while (ismodifier(tok.peek()))
 			mod += tok.get();
-		// todo: check modifiers
+		if (mod.size() > 2 || (mod.size() == 2 && mod != "+!"))
+			error("pmodifiers", "bad modifers: '" + mod + "'");
 		return mod;
 	}
 
@@ -111,9 +112,6 @@ struct ASTParseRule : TokenHelpers {
 			if ( !isalphanum(name[i]) )  return false;
 		return true;
 	}
-	// int isoperator(string s) {
-	// 	return s == "(" || s == ")" || s == "|";
-	// }
 
 	void test() {
 		addrule("$test1", "PRINT   $hello  A 1+");
