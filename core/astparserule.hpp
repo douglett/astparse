@@ -2,7 +2,6 @@
 #include "tokenizer.hpp"
 #include <vector>
 #include <map>
-#include <cassert>
 using namespace std;
 
 
@@ -18,9 +17,9 @@ struct ASTParseRule : TokenHelpers {
 		cout << "making rule: " << name << endl;
 		// check name validity and init
 		if (!isvalidname(name))
-			error("addrule", "invalid rule name: " + name);
+			error("addrule", "invalid rule name: '" + name + "'");
 		if (rules.count(name))
-			error("addrule", "redefinition of rule: " + name);
+			error("addrule", "redefinition of rule: '" + name + "'");
 		auto& rule = rules[name] = { name };
 		// init tokenizer
 		tok.reset();
@@ -63,13 +62,15 @@ struct ASTParseRule : TokenHelpers {
 
 	Atom patom(Rule& rule) {
 		Atom atom;
-		assert( !tok.eof() );
-		// assert( !ismodifier(tok.peek()) && !isoperator(tok.peek()) );
-		assert( !ismodifier(tok.peek()) && tok.peek() != "|" );
+		// error checking
+		if (tok.eof() || ismodifier(tok.peek()) || tok.peek() == "|") {
+			error("patom", "unexpected in atom: '" + tok.get() + "'");
+		}
 		// $rulename
-		if (tok.peek() == "$") {
+		else if (tok.peek() == "$") {
 			atom.rule = tok.get();
-			assert(isidentifier(tok.peek()));
+			if (!isidentifier(tok.peek()))
+				error("patom", "expected $(rulename), got: '" + tok.peek() + "'");
 			atom.rule += tok.get();
 			atom.mod = pmodifiers();
 		}
@@ -78,10 +79,12 @@ struct ASTParseRule : TokenHelpers {
 			tok.get();
 			int id_or = por(rule);
 			atom.rule = "$" + to_string(id_or);
-			assert(tok.peek() == ")");
+			if (tok.peek() != ")")
+				error("patom", "expected close-parenthasis, got: '" + tok.peek() + "'");
 			tok.get();
 			atom.mod = pmodifiers();
 		}
+		// string match, punctuation, or anything else
 		else {
 			atom.rule = tok.get();
 			atom.mod = pmodifiers();
@@ -100,7 +103,7 @@ struct ASTParseRule : TokenHelpers {
 
 	// helpers - various definitions
 	static int ismodifier(const string& s) {
-		return s == "*" || s == "+" || s == "!";
+		return s == "?" || s == "*" || s == "+" || s == "!";
 	}
 	static int isvalidname(const string& name) {
 		if (name.length() < 2 || name[0] != '$')  return false;
