@@ -5,7 +5,7 @@
 using namespace std;
 
 
-struct ASTParseRule : TokenHelpers {
+struct ASTRuleset : TokenHelpers {
 	// struct Rule    { string name; vector<SubRule> subrules; };
 	struct Atom    { string rule, mod; };
 	struct Subrule { vector<Atom> list; bool flag_or; };
@@ -102,15 +102,10 @@ struct ASTParseRule : TokenHelpers {
 		return mod;
 	}
 
-	// helpers - various definitions
-	static int ismodifier(const string& s) {
-		return s == "?" || s == "*" || s == "+" || s == "!";
-	}
-	static int isvalidname(const string& name) {
-		if (name.length() < 2 || name[0] != '$')  return false;
-		for (size_t i = 1; i < name.length(); i++)
-			if ( !isalphanum(name[i]) )  return false;
-		return true;
+	void simplify(Rule& rule) {
+		for (auto& subrule : rule.subrules) {
+
+		}
 	}
 
 	void test() {
@@ -123,11 +118,16 @@ struct ASTParseRule : TokenHelpers {
 		showall();
 	}
 
+
+	// === helpers
+	int error(const string& type, const string& msg) {
+		throw runtime_error("ASTRule: " + type + ": " + msg);
+		return false;
+	}
 	void showall() const {
 		for (auto&[key, value] : rules)
 			showrule(key);
 	}
-
 	void showrule(const string& rulename) const {
 		// show rulename
 		auto& rule = rules.at(rulename);
@@ -146,8 +146,15 @@ struct ASTParseRule : TokenHelpers {
 		}
 	}
 
-	int error(const string& type, const string& msg) {
-		throw runtime_error("ASTRule: " + type + ": " + msg);
-		return false;
+
+	// === Definitions
+	static int ismodifier(const string& s) {
+		return s == "?" || s == "*" || s == "+" || s == "!";
+	}
+	static int isvalidname(const string& name) {
+		if (name.length() < 2 || name[0] != '$')  return false;
+		for (size_t i = 1; i < name.length(); i++)
+			if ( !isalphanum(name[i]) )  return false;
+		return true;
 	}
 };

@@ -1,13 +1,13 @@
 #include "core/core.hpp"
-#include "core/astparserule.hpp"
+#include "core2/core.hpp"
 #include "tinybasic/tinybasicparser.hpp"
 #include "tinybasic/tinybasiccompiler.hpp"
 using namespace std;
 
 
 int test1() {
-	ASTParseRule parse;
-	parse.test();
+	ASTRuleset ruleset;
+	ruleset.test();
 	return 0;
 }
 
