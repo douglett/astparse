@@ -7,7 +7,6 @@ using namespace std;
 
 
 struct ASTRuleset : TokenHelpers {
-	// struct Rule    { string name; vector<SubRule> subrules; };
 	struct Atom    { string rule, mod; };
 	struct Subrule { vector<Atom> atoms; bool flag_or; };
 	struct Rule    { string name; map<int, Subrule> subrules; };
@@ -40,11 +39,11 @@ struct ASTRuleset : TokenHelpers {
 		while (true) {
 			id_and = pand(rule);
 			// if 'and' rule has a single Atom, just add it directly, and erase 
-			// if (rule.subrules.at(id_and).atoms.size() == 1) {
-			// 	rule.subrules.at(id).atoms.push_back( rule.subrules.at(id_and).atoms.at(0) );
-			// 	rule.subrules.erase(id_and);
-			// }
-			// else
+			if (rule.subrules.at(id_and).atoms.size() == 1) {
+				rule.subrules.at(id).atoms.push_back( rule.subrules.at(id_and).atoms.at(0) );
+				rule.subrules.erase(id_and);
+			}
+			else
 				rule.subrules.at(id).atoms.push_back({ "$"+to_string(id_and) });
 			// second -> multiple rules
 			if (tok.peek() == "|") {
@@ -54,7 +53,7 @@ struct ASTRuleset : TokenHelpers {
 			break;
 		}
 		// if 'or' rule has a single 'and' rule, erase 'or' and return it
-		// if (rule.subrules.at(id).atoms.size() == 1) {
+		// if (rule.subrules.at(id).atoms.size() == 1 && isinternalrule(rule.subrules.at(id).atoms.at(0).rule, id_and)) {
 		// 	rule.subrules.erase(id);
 		// 	return id_and;
 		// }
@@ -63,7 +62,7 @@ struct ASTRuleset : TokenHelpers {
 
 	int pand(Rule& rule) {
 		int id = srindex++;
-		rule.subrules[id] = { {}, true };
+		rule.subrules[id] = { {}, false };
 		// parse each Atom in rule
 		while (!tok.eof()) {
 			if (tok.peek() == "|" || tok.peek() == ")")  // break rule if we hit an 'or' or 'end-bracket' operator
