@@ -39,11 +39,11 @@ struct ASTRuleset : TokenHelpers {
 		while (true) {
 			id_and = pand(rule);
 			// if 'and' rule has a single Atom, just add it directly, and erase 
-			if (rule.subrules.at(id_and).atoms.size() == 1) {
-				rule.subrules.at(id).atoms.push_back( rule.subrules.at(id_and).atoms.at(0) );
-				rule.subrules.erase(id_and);
-			}
-			else
+			// if (rule.subrules.at(id_and).atoms.size() == 1) {
+			// 	rule.subrules.at(id).atoms.push_back( rule.subrules.at(id_and).atoms.at(0) );
+			// 	rule.subrules.erase(id_and);
+			// }
+			// else
 				rule.subrules.at(id).atoms.push_back({ "$"+to_string(id_and) });
 			// second -> multiple rules
 			if (tok.peek() == "|") {
@@ -53,7 +53,7 @@ struct ASTRuleset : TokenHelpers {
 			break;
 		}
 		// if 'or' rule has a single 'and' rule, erase 'or' and return it
-		// if (rule.subrules.at(id).atoms.size() == 1 && isinternalrule(rule.subrules.at(id).atoms.at(0).rule, id_and)) {
+		// if (rule.subrules.at(id).atoms.size() == 1) {
 		// 	rule.subrules.erase(id);
 		// 	return id_and;
 		// }
@@ -146,6 +146,7 @@ struct ASTRuleset : TokenHelpers {
 		// loop subrules
 		for (auto&[i, subrule] : rule.subrules) {
 			cout << "   " << (rule.subrules.size() >= 10 && i < 10 ? "0" : "") << i << ": ";  // show subrule id number
+			// cout << (subrule.flag_or ? "|  " : "&  ");
 			// show each rule in subrule on a line
 			for (auto& atom : subrule.atoms) {
 				cout << atom.rule << atom.mod << " ";
