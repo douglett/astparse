@@ -10,9 +10,10 @@ struct ASTRuleset : TokenHelpers {
 	// struct Rule    { string name; vector<SubRule> subrules; };
 	struct Atom    { string rule, mod; };
 	struct Subrule { vector<Atom> atoms; bool flag_or; };
-	struct Rule    { string name; vector<Subrule> subrules; };
+	struct Rule    { string name; map<int, Subrule> subrules; };
 	map<string, Rule> rules;
 	Tokenizer tok;
+	int srindex = 0;
 
 	void addrule(const string& name, const string& line) {
 		cout << "making rule: " << name << endl;
@@ -22,6 +23,7 @@ struct ASTRuleset : TokenHelpers {
 		if (rules.count(name))
 			error("addrule", "redefinition of rule: '" + name + "'");
 		auto& rule = rules[name] = { name };
+		srindex = 0;
 		// init tokenizer
 		tok.reset();
 		tok.tokenizeline(line);
@@ -31,23 +33,37 @@ struct ASTRuleset : TokenHelpers {
 	}
 
 	int por(Rule& rule) {
-		rule.subrules.push_back({ {}, true });
-		int id = rule.subrules.size() - 1;
-		// first rule
-		int id_and = pand(rule);
-		rule.subrules.at(id).atoms.push_back({ "$"+to_string(id_and) });
-		// second -> multiple rules
-		while (tok.peek() == "|") {
-			tok.get();
-			int id_and = pand(rule);
-			rule.subrules.at(id).atoms.push_back({ "$"+to_string(id_and) });
+		int id = srindex++;
+		rule.subrules[id] = { {}, true };
+		// parse multiple 'and' rules seperated by '|' deliminator
+		int id_and = 0;
+		while (true) {
+			id_and = pand(rule);
+			// if 'and' rule has a single Atom, just add it directly, and erase 
+			// if (rule.subrules.at(id_and).atoms.size() == 1) {
+			// 	rule.subrules.at(id).atoms.push_back( rule.subrules.at(id_and).atoms.at(0) );
+			// 	rule.subrules.erase(id_and);
+			// }
+			// else
+				rule.subrules.at(id).atoms.push_back({ "$"+to_string(id_and) });
+			// second -> multiple rules
+			if (tok.peek() == "|") {
+				tok.get();
+				continue;
+			}
+			break;
 		}
+		// if 'or' rule has a single 'and' rule, erase 'or' and return it
+		// if (rule.subrules.at(id).atoms.size() == 1) {
+		// 	rule.subrules.erase(id);
+		// 	return id_and;
+		// }
 		return id;
 	}
 
 	int pand(Rule& rule) {
-		rule.subrules.push_back({ {}, false });
-		int id = rule.subrules.size() - 1;
+		int id = srindex++;
+		rule.subrules[id] = { {}, true };
 		// parse each Atom in rule
 		while (!tok.eof()) {
 			if (tok.peek() == "|" || tok.peek() == ")")  // break rule if we hit an 'or' or 'end-bracket' operator
@@ -103,79 +119,15 @@ struct ASTRuleset : TokenHelpers {
 		return mod;
 	}
 
-	void simplifyall() {
-		for (auto&[rulename, rule] : rules)
-			simplify(rule);
-	}
-	void simplify(Rule& rule) {
-		// for (auto& subrule : rule.subrules) {
-
-		// }
-		cout << "simplify" << endl;
-
-		int erasecount = 0, tmp = 0;
-
-		// for (int i = rule.subrules.size() - 1; i >= 0; i--) {
-		for (size_t i = 0; i < rule.subrules.size(); i++) {
-			// if the current subrule has a single member, it is a target for simplifying
-			auto& subrule = rule.subrules.at(i);
-			if (subrule.atoms.size() != 1)
-				continue;
-			auto atom = subrule.atoms.at(0);
-
-			if (isinternalrule(atom.rule) && atom.mod == "") {
-				// cout << "here1 " << i << " " << atom.rule << endl;
-				int i = stoi(atom.rule.substr(1));  // find target-subrule index
-				// cout << i << endl;
-				subrule = rule.subrules.at(i);  // replace current-subrule with target-subrule
-				rule.subrules.at(i) = {};  // clear current-subrule
-				erasecount++;
-			}
-
-			if (!isinternalrule(atom.rule)) {
-				// cout << "here2 " << i << " " << atom.rule << endl;
-				for (size_t j = 0; j < i; j++)
-					for (auto& atom_replace : rule.subrules.at(j).atoms)
-						if (atom_replace.rule == "$"+to_string(i)) {
-							atom_replace = atom;
-							subrule = {};  // clear current-subrule
-							erasecount++;
-						}
-			}
-		}
-
-
-		for (int i = rule.subrules.size() - 1; i >= 0; i--) {
-			if (erasecount == 0)
-				break;
-			for (auto& atom : rule.subrules.at(i).atoms)
-				if (isinternalrule(atom.rule, tmp))
-					atom.rule = "$" + to_string(tmp - erasecount);
-			if (rule.subrules.at(i).atoms.size() == 0) {
-				rule.subrules.erase(rule.subrules.begin() + i);
-				erasecount--;
-			}
-		}
-	}
-
 	void test() {
 		addrule("$test1", "PRINT   $hello  A 1+");
 		addrule("$test2", "$hello $world | A*");
 		addrule("$test3", "$hello $world | PRINT $world | 1");
 		addrule("$test4", "a ($addop $subop) b");
 		addrule("$test5", "PRINT ($strlit | (100|101|102)+)!");
+		addrule("$test6", "ass");
+		addrule("$test7", "a (ass)");
 
-		showall();
-
-		cout << "-----\n";
-		// simplify(rules.at("$test1"));
-		// showrule(rules.at("$test1"));
-		// simplify(rules.at("$test2"));
-		// showrule(rules.at("$test2"));
-		// simplify(rules.at("$test4"));
-		// showrule(rules.at("$test4"));
-
-		simplifyall();
 		showall();
 	}
 
@@ -193,9 +145,8 @@ struct ASTRuleset : TokenHelpers {
 		// show rulename
 		cout << rule.name << ":" << endl;
 		// loop subrules
-		for (size_t i = 0; i < rule.subrules.size(); i++) {
+		for (auto&[i, subrule] : rule.subrules) {
 			cout << "   " << (rule.subrules.size() >= 10 && i < 10 ? "0" : "") << i << ": ";  // show subrule id number
-			auto& subrule = rule.subrules[i];  // get subrule
 			// show each rule in subrule on a line
 			for (auto& atom : subrule.atoms) {
 				cout << atom.rule << atom.mod << " ";
