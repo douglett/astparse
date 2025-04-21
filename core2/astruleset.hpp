@@ -2,6 +2,7 @@
 #include "tokenizer.hpp"
 #include <vector>
 #include <map>
+#include <cassert>
 using namespace std;
 
 
@@ -103,19 +104,63 @@ struct ASTRuleset : TokenHelpers {
 	}
 
 	void simplify(Rule& rule) {
-		for (auto& subrule : rule.subrules) {
+		// for (auto& subrule : rule.subrules) {
 
+		// }
+		cout << "simplify" << endl;
+
+		// for (int i = rule.subrules.size() - 1; i >= 0; i--) {
+		for (size_t i = 0; i < rule.subrules.size(); i++) {
+			// if the current subrule has a single member, it is a target for simplifying
+			auto& subrule = rule.subrules.at(i);
+			if (subrule.list.size() != 1)
+				continue;
+			auto atom = subrule.list.at(0);
+
+			if (isinternalrule(atom.rule) && atom.mod == "") {
+				// cout << "here1 " << i << " " << atom.rule << endl;
+				int i = stoi(atom.rule.substr(1));  // find target-subrule index
+				// cout << i << endl;
+				subrule = rule.subrules.at(i);  // replace current-subrule with target-subrule
+				rule.subrules.at(i) = {};  // clear current-subrule
+			}
+
+			if (!isinternalrule(atom.rule)) {
+				cout << "here2 " << i << " " << atom.rule << endl;
+				for (size_t j = 0; j < i; j++) {
+					for (auto& atom_replace : rule.subrules.at(j).list) {
+						if (atom_replace.rule == "$"+to_string(i)) {
+							atom_replace = atom;
+							subrule = {};
+						}
+					}
+				}
+			}
 		}
 	}
 
+	// Subrule& findsubrule(Rule& const string& subrule) {
+	// 	assert(isinternalrule(subrule));
+	// 	int i = stoi(rule.substr(1));
+	// 	// cout << i << endl;
+	// 	return rule.subrules.at(i);
+	// }
+
 	void test() {
 		addrule("$test1", "PRINT   $hello  A 1+");
-		addrule("$test2", "$hello $world | A");
+		addrule("$test2", "$hello $world | A*");
 		addrule("$test3", "$hello $world | PRINT $world | 1");
 		addrule("$test4", "a ($addop $subop) b");
 		addrule("$test5", "PRINT ($strlit | (100|101|102)+)!");
 
 		showall();
+		cout << "-----\n";
+		// simplify(rules.at("$test1"));
+		// showrule(rules.at("$test1"));
+		// simplify(rules.at("$test2"));
+		// showrule(rules.at("$test2"));
+		simplify(rules.at("$test4"));
+		showrule(rules.at("$test4"));
 	}
 
 
@@ -125,12 +170,11 @@ struct ASTRuleset : TokenHelpers {
 		return false;
 	}
 	void showall() const {
-		for (auto&[key, value] : rules)
-			showrule(key);
+		for (auto&[key, rule] : rules)
+			showrule(rule);
 	}
-	void showrule(const string& rulename) const {
+	void showrule(const Rule& rule) const {
 		// show rulename
-		auto& rule = rules.at(rulename);
 		cout << rule.name << ":" << endl;
 		// loop subrules
 		for (size_t i = 0; i < rule.subrules.size(); i++) {
@@ -155,6 +199,16 @@ struct ASTRuleset : TokenHelpers {
 		if (name.length() < 2 || name[0] != '$')  return false;
 		for (size_t i = 1; i < name.length(); i++)
 			if ( !isalphanum(name[i]) )  return false;
+		return true;
+	}
+	static int isrulename(const string& name) {
+		if (name.length() < 2 || name[0] != '$')  return false;
+		if (!isidentifier(name.substr(1)))  return false;
+		return true;
+	}
+	static int isinternalrule(const string& name) {
+		if (name.length() < 2 || name[0] != '$')  return false;
+		if (!isnumber(name.substr(1)))  return false;
 		return true;
 	}
 };
