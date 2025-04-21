@@ -118,6 +118,27 @@ struct ASTRuleset : TokenHelpers {
 		return mod;
 	}
 
+	int validate() {
+		cout << "Validating ruleset..." << endl;
+		int id = 0;
+		for (const auto&[rulename, rule] : rules)
+		for (auto&[key, subrule] : rule.subrules)
+		for (auto& atom : subrule.atoms) {
+			if (isinternalrule(atom.rule, id)) {
+				if (!rule.subrules.count(id))
+					errorc("validate-"+rulename, "missing subrule: "+atom.rule);
+			}
+			else if (isrulename(atom.rule)) {
+				if (!rules.count(atom.rule))
+					errorc("validate-"+rulename, "missing rule: "+atom.rule);
+			}
+			// else
+			// 	errorc("validate-"+rulename, "unknown atom: "+atom.rule);
+		}
+		cout << "Ruleset validated." << endl;
+		return true;
+	}
+
 	void test() {
 		addrule("$test1", "PRINT   $hello  A 1+");
 		addrule("$test2", "$hello $world | A*");
@@ -128,10 +149,15 @@ struct ASTRuleset : TokenHelpers {
 		addrule("$test7", "a (ass)");
 
 		showall();
+		validate();
 	}
 
 
 	// === helpers
+	int errorc(const string& type, const string& msg) {
+		cout << "ASTRule: " << type << ": " << msg << endl;
+		return false;
+	}
 	int error(const string& type, const string& msg) {
 		throw runtime_error("ASTRule: " + type + ": " + msg);
 		return false;
